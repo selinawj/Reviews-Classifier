@@ -1,0 +1,46 @@
+#removing empty reviews
+education_df <- na.omit(education_df)
+finance_df <- na.omit(finance_df)
+game_df <- na.omit(game_df)
+social_df <- na.omit(social_df)
+weather_df <- na.omit(weather_df)
+
+#using a smaller subset of training and testing data
+training_data_5000 <- rbind(education_df[1:1000,], finance_df[1:1000,], game_df[1:1000,], social_df[1:1000,], weather_df[1:1000,])
+testing_data_1000 <- rbind(education_df[1001:1200,], finance_df[1001:1200,], game_df[1001:1200,], social_df[1001:1200,], weather_df[1001:1200,])
+dataset_6000 <- rbind(training_data_5000, testing_data_1000)
+
+dataset_pp <- dataset_6000
+dataset_pp <- str_replace_all(dataset_pp[,1],"[^[:graph:]]", " ")
+dataset_pp <- tolower(dataset_pp)
+dataset_pp <- removeWords(dataset_pp, stopwords())
+dataset_pp <- removePunctuation(dataset_pp)
+dataset_pp <- removeNumbers(dataset_pp)
+dataset_pp <- stemDocument(dataset_pp, language = "english")
+
+#build dtm
+dataset_pp <- as.data.frame(dataset_pp)
+dtm <- create_matrix(dataset_pp[,1])
+dtm <- removeSparseTerms(dtm, 0.998) 
+dtm <- weightTfIdf(dtm, normalize = TRUE)
+mat <- as.matrix(dtm)
+
+#train the model
+#svm algorithm
+svm_classifier = svm(mat[1:5000,], as.factor(dataset_6000[1:5000,2]))
+
+#produce predictions
+predicted = predict(svm_classifier, mat[5001:6000,])
+
+#generate confusion matrix
+confusion_matrix = table(dataset_6000[5001:6000, 2], predicted)
+#          education finance game social weather
+#education        80      18   41     44      17
+#finance           7     163    7      6      17
+#game             16      18   96     57      13
+#social           23      19   31    113      14
+#weather          29      12    5     60      94
+
+#calculate recall_accuracy
+recall_accuracy(dataset_6000[5001:6000, 2], predicted)
+#0.546
